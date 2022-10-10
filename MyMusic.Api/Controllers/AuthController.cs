@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using MyMusic.Core.Models.Auth;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 
 namespace MyMusic.Api.Controllers
 {
@@ -20,11 +21,19 @@ namespace MyMusic.Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly UserManager<User> _userManager;
+        private readonly RoleManager<Role> _roleManager;
         private readonly IMapper _mapper;
+
         
-        public AuthController(IMapper mapper, UserManager<User> userManager){
+        public AuthController(
+            IMapper mapper, 
+            UserManager<User> userManager,
+            RoleManager<Role> roleManager
+            )
+        {
             _mapper = mapper;
             _userManager = userManager;
+            _roleManager = roleManager;
         }
 
         [HttpPost("signup")]
@@ -59,7 +68,65 @@ namespace MyMusic.Api.Controllers
             return Ok("User logged in successfully");
         }
 
+        [HttpPost("roles")]
+        public async Task<IActionResult> CreateRole([FromBody] SaveRoleResource saveRoleResource)
+        {
+            var role = _mapper.Map<SaveRoleResource, Role>(saveRoleResource);
 
+            if(string.IsNullOrWhiteSpace(role.Name)){
+                return BadRequest("Role name is required");
+            }
 
+            var roleCreateResult = await _roleManager.CreateAsync(role);
+
+            if(!roleCreateResult.Succeeded){
+                return BadRequest(roleCreateResult.Errors);
+            }
+
+            return Created(string.Empty, string.Empty);
+        }
+
+        [HttpGet("roles")]
+        public async Task<IActionResult> GetRoles()
+        {
+            var roles = await _roleManager.Roles.ToListAsync();
+
+            var roleResources = _mapper.Map<IEnumerable<Role>, IEnumerable<RoleResource>>(roles);
+
+            return Ok(roleResources);
+        }
+
+        [HttpGet("User/{userEmail}/roles")]
+        public async Task<IActionResult> GetUserRoles(string userEmail)
+        {
+            var user = await _userManager.Users.SingleOrDefaultAsync(u => u.UserName == userEmail);
+
+            var userRoles = await _userManager.GetRolesAsync(user);
+
+            return Ok(userRoles);
+        }
+
+        [HttpPost("User/{userEmail}/roles")]
+        public async Task<IActionResult> AddUserToRole(string userEmail, [FromBody] string roleName)
+        {
+            var user = await _userManager.Users.SingleOrDefaultAsync(u => u.UserName == userEmail);
+            var role = await _roleManager.Roles.SingleOrDefaultAsync(r => r.Name == roleName);
+
+            if(role == null){
+                return BadRequest("Role does not exist");
+            }
+
+            if(user == null){
+                return BadRequest("User does not exist");
+            }
+
+            var userAddToRoleResult = await _userManager.AddToRoleAsync(user, role.Name);
+
+            if(!userAddToRoleResult.Succeeded){
+                return BadRequest(userAddToRoleResult.Errors);
+            }
+
+            return Ok("User added to role successfully");
+        }
     }
 }

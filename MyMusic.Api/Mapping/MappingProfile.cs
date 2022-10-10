@@ -20,6 +20,9 @@ namespace MyMusic.Api.Mapping
             CreateMap<SaveArtistResource, Artist>();
 
             CreateMap<UserSignUpResource, User>().ForMember(u => u.UserName, opt => opt.MapFrom(ur => ur.Email));
+            
+            CreateMap<Role, RoleResource>();
+            CreateMap<SaveRoleResource, Role>();
         }
     }
 }
