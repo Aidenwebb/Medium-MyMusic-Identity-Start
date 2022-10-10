@@ -1,5 +1,7 @@
-﻿using AutoMapper;
+﻿using System;
+using AutoMapper;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -9,7 +11,9 @@ using Microsoft.OpenApi.Models;
 using MyMusic.Core;
 using MyMusic.Core.Services;
 using MyMusic.Data;
+using MyMusic.Core.Models.Auth;
 using MyMusic.Services;
+
 
 namespace MyMusic.Api
 {
@@ -28,6 +32,18 @@ namespace MyMusic.Api
             services.AddControllers();
 
             services.AddDbContext<MyMusicDbContext>(options => options.UseSqlServer(Configuration.GetConnectionString("Default"), x => x.MigrationsAssembly("MyMusic.Data")));
+            services.AddIdentity<User, Role>(options =>
+            {
+                options.Password.RequireDigit = false;
+                options.Password.RequiredLength = 6;
+                options.Password.RequireLowercase = false;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireUppercase = false;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(1d);
+                options.Lockout.MaxFailedAccessAttempts = 5;
+            })
+                .AddEntityFrameworkStores<MyMusicDbContext>()
+                .AddDefaultTokenProviders();
             
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddTransient<IMusicService, MusicService>();
